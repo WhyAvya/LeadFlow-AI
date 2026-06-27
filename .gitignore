@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual Environments
+venv/
+.venv/
+
+# Database
+database.db
+
+# Generated Charts
+static/*.png
+
+# Excel Exports
+exports/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
