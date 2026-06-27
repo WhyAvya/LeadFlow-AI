@@ -1,4 +1,11 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    send_file
+)
 
 from database import (
     init_db,
@@ -18,27 +25,36 @@ from automation import (
 from charts import (
     calculate_kpis,
     event_distribution,
-    priority_distribution
+    priority_distribution,
+    generate_all_charts
+)
+
+from export import (
+    export_csv,
+    export_excel
 )
 
 app = Flask(__name__)
 
+# ============================================
 # Initialize Database
+# ============================================
+
 init_db()
 
 
-# ==========================
+# ============================================
 # HOME
-# ==========================
+# ============================================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ==========================
-# SUBMIT LEAD
-# ==========================
+# ============================================
+# SUBMIT NEW LEAD
+# ============================================
 
 @app.route("/submit", methods=["POST"])
 def submit():
@@ -54,7 +70,6 @@ def submit():
     event_date = request.form["event_date"]
     requirements = request.form["requirements"]
 
-    # Business Automation
     score, priority = calculate_priority(
         event_type,
         budget,
@@ -73,7 +88,6 @@ def submit():
         package
     )
 
-    # Save Lead
     insert_lead(
         name,
         phone,
@@ -92,9 +106,9 @@ def submit():
     return redirect(url_for("dashboard"))
 
 
-# ==========================
+# ============================================
 # DASHBOARD
-# ==========================
+# ============================================
 
 @app.route("/dashboard")
 def dashboard():
@@ -108,9 +122,9 @@ def dashboard():
     )
 
 
-# ==========================
+# ============================================
 # LEAD DETAILS
-# ==========================
+# ============================================
 
 @app.route("/lead/<int:lead_id>")
 def lead_details(lead_id):
@@ -123,9 +137,9 @@ def lead_details(lead_id):
     )
 
 
-# ==========================
+# ============================================
 # UPDATE STATUS
-# ==========================
+# ============================================
 
 @app.route("/contacted/<int:lead_id>")
 def contacted(lead_id):
@@ -159,28 +173,29 @@ def closed(lead_id):
     )
 
 
-# ==========================
+# ============================================
 # DELETE LEAD
-# ==========================
+# ============================================
 
 @app.route("/delete/<int:lead_id>")
 def delete(lead_id):
 
     delete_lead(lead_id)
 
-    return redirect(
-        url_for("dashboard")
-    )
+    return redirect(url_for("dashboard"))
 
 
-# ==========================
+# ============================================
 # ANALYTICS
-# ==========================
+# ============================================
 
 @app.route("/analytics")
 def analytics():
 
     leads = get_all_leads()
+
+    # Regenerate charts every visit
+    generate_all_charts(leads)
 
     kpis = calculate_kpis(leads)
 
@@ -196,9 +211,45 @@ def analytics():
     )
 
 
-# ==========================
-# RUN APP
-# ==========================
+# ============================================
+# EXPORT CSV
+# ============================================
+
+@app.route("/export/csv")
+def download_csv():
+
+    leads = get_all_leads()
+
+    filepath = export_csv(leads)
+
+    return send_file(
+        filepath,
+        as_attachment=True,
+        download_name="LeadFlowAI_Leads.csv"
+    )
+
+
+# ============================================
+# EXPORT EXCEL
+# ============================================
+
+@app.route("/export/excel")
+def download_excel():
+
+    leads = get_all_leads()
+
+    filepath = export_excel(leads)
+
+    return send_file(
+        filepath,
+        as_attachment=True,
+        download_name="LeadFlowAI_Leads.xlsx"
+    )
+
+
+# ============================================
+# RUN APPLICATION
+# ============================================
 
 if __name__ == "__main__":
     app.run(debug=True)
